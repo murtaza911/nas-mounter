@@ -12,11 +12,21 @@ final class MountManager: @unchecked Sendable {
 
     /// True if a volume backed by this share's URL is currently mounted.
     func isMounted(_ share: ShareConfig) -> Bool {
+        isMounted(share, includeHiddenVolumes: false)
+    }
+
+    /// True when the share is mounted anywhere, including Time Machine's
+    /// private mount beneath /Volumes/.timemachine.
+    private func isMountedAnywhere(_ share: ShareConfig) -> Bool {
+        isMounted(share, includeHiddenVolumes: true)
+    }
+
+    private func isMounted(_ share: ShareConfig, includeHiddenVolumes: Bool) -> Bool {
         guard let shareURL = share.url else { return false }
         let keys: [URLResourceKey] = [.volumeURLForRemountingKey]
         let volumes = FileManager.default.mountedVolumeURLs(
             includingResourceValuesForKeys: keys,
-            options: [.skipHiddenVolumes]
+            options: includeHiddenVolumes ? [] : [.skipHiddenVolumes]
         ) ?? []
 
         for volume in volumes {
@@ -38,15 +48,17 @@ final class MountManager: @unchecked Sendable {
     func mountAllIfNeeded(reason: String) {
         let shares = ShareStore.shared.shares.filter { $0.enabled }
         guard !shares.isEmpty else { return }
-        NSLog("NASMounter: checking \(shares.count) share(s) — \(reason)")
+        let missingShares = shares.filter { !isMountedAnywhere($0) }
+        guard !missingShares.isEmpty else { return }
+        NSLog("NASMounter: mounting \(missingShares.count) missing share(s) — \(reason)")
 
-        for share in shares where !isMounted(share) {
-            mount(share)
+        for share in missingShares {
+            mount(share, avoidHiddenMounts: true)
         }
     }
 
     /// Mounts a single share asynchronously (no-op if a mount is already in progress).
-    func mount(_ share: ShareConfig) {
+    func mount(_ share: ShareConfig, avoidHiddenMounts: Bool = false) {
         guard let url = share.url, !share.host.isEmpty, !share.shareName.isEmpty else { return }
 
         inFlightLock.lock()
@@ -64,6 +76,10 @@ final class MountManager: @unchecked Sendable {
             }
 
             guard let self, !self.isMounted(share) else { return }
+            if avoidHiddenMounts && self.isMountedAnywhere(share) {
+                NSLog("NASMounter: skipped \(share.displayName); already mounted privately")
+                return
+            }
 
             let openOptions = NSMutableDictionary()
             // Never show a password dialog from a background daemon context;

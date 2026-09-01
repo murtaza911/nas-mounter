@@ -9,9 +9,10 @@ A tiny macOS menu bar app that keeps your NAS (SMB) shares permanently mounted �
 ## What it does
 
 - **Mounts at login/startup** — enable "Launch at login" in Settings.
-- **Remounts after wake from sleep** — listens for system wake and screen-unlock events, with a delayed retry to allow Wi-Fi/Ethernet to come back first.
+- **Remounts after a user-visible wake** — waits for the screen to wake or unlock, then retries after Wi-Fi/Ethernet has had time to reconnect. Dark wakes do not touch the NAS.
 - **Remounts when the network returns** — watches network reachability and reacts to offline → online transitions.
-- **Watchdog** — every 60 seconds it verifies every enabled share is mounted and silently remounts anything that dropped.
+- **Sleep-aware watchdog** — while the screen is awake, every 60 seconds it verifies every enabled share is mounted and silently remounts anything that dropped. It pauses during screen/lid sleep.
+- **Time Machine-safe detection** — recognizes Time Machine's hidden network mount and avoids automatically mounting a competing copy of the same share.
 - **Keychain-backed credentials** — passwords are stored in your macOS Keychain, never in plain text. Mounting never pops up a password dialog.
 - **All macOS network protocols** — SMB (default/recommended), AFP, NFS, WebDAV (http/https), and FTP. Just pick the protocol per share in Settings.
 
