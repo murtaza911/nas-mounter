@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
     name: "NASMounter",
     platforms: [
-        .macOS(.v14)
+        .macOS(.v12)
     ],
     targets: [
         .executableTarget(

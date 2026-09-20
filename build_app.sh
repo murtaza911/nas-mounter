@@ -4,14 +4,16 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
-echo "Building release binary..."
-swift build -c release
+echo "Building universal release binary (Apple silicon + Intel)..."
+ARCH_FLAGS=(--arch arm64 --arch x86_64)
+swift build -c release "${ARCH_FLAGS[@]}"
+BIN_DIR="$(swift build -c release "${ARCH_FLAGS[@]}" --show-bin-path)"
 
 APP="build/NAS Mounter.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
-cp .build/release/NASMounter "$APP/Contents/MacOS/NASMounter"
+cp "$BIN_DIR/NASMounter" "$APP/Contents/MacOS/NASMounter"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 

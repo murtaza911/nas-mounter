@@ -1,5 +1,4 @@
 import SwiftUI
-import ServiceManagement
 
 /// Editable model wrapper so passwords can be edited alongside share configs.
 private struct EditableShare: Identifiable {
@@ -10,7 +9,7 @@ private struct EditableShare: Identifiable {
 
 struct SettingsView: View {
     @State private var shares: [EditableShare] = []
-    @State private var launchAtLogin = (SMAppService.mainApp.status == .enabled)
+    @State private var launchAtLogin = LoginItemManager.isEnabled
     @State private var saveConfirmation = false
 
     var body: some View {
@@ -19,15 +18,20 @@ struct SettingsView: View {
                 .font(.title2.bold())
             Text("Each share is kept mounted automatically: at login, after waking from sleep, and whenever the network reconnects.")
                 .font(.callout)
-                .foregroundStyle(.secondary)
+                .foregroundColor(.secondary)
 
             if shares.isEmpty {
-                ContentUnavailableView(
-                    "No shares configured",
-                    systemImage: "externaldrive.badge.questionmark",
-                    description: Text("Click “Add Share” to add your first NAS share.")
-                )
-                .frame(maxHeight: 220)
+                VStack(spacing: 8) {
+                    Image(systemName: "externaldrive.badge.questionmark")
+                        .font(.system(size: 34))
+                        .foregroundColor(.secondary)
+                    Text("No shares configured")
+                        .font(.headline)
+                    Text("Click “Add Share” to add your first NAS share.")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, minHeight: 220, maxHeight: 220)
             } else {
                 ScrollView {
                     VStack(spacing: 10) {
@@ -53,7 +57,7 @@ struct SettingsView: View {
             Divider()
 
             Toggle("Launch at login", isOn: $launchAtLogin)
-                .onChange(of: launchAtLogin) { _, enabled in
+                .onChange(of: launchAtLogin) { enabled in
                     setLaunchAtLogin(enabled)
                 }
 
@@ -61,7 +65,7 @@ struct SettingsView: View {
                 Spacer()
                 if saveConfirmation {
                     Text("Saved")
-                        .foregroundStyle(.green)
+                        .foregroundColor(.green)
                         .transition(.opacity)
                 }
                 Button("Save & Mount") { save() }
@@ -104,14 +108,10 @@ struct SettingsView: View {
 
     private func setLaunchAtLogin(_ enabled: Bool) {
         do {
-            if enabled {
-                try SMAppService.mainApp.register()
-            } else {
-                try SMAppService.mainApp.unregister()
-            }
+            try LoginItemManager.setEnabled(enabled)
         } catch {
             NSLog("NASMounter: launch-at-login change failed: \(error.localizedDescription)")
-            launchAtLogin = (SMAppService.mainApp.status == .enabled)
+            launchAtLogin = LoginItemManager.isEnabled
         }
     }
 }
@@ -143,9 +143,8 @@ private struct ShareRowView: View {
                     }
                     .buttonStyle(.borderless)
                 }
-                Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 6) {
-                    GridRow {
-                        Text("Protocol")
+                VStack(spacing: 6) {
+                    fieldRow("Protocol") {
                         Picker("", selection: $share.config.proto) {
                             ForEach(ShareProtocol.allCases) { proto in
                                 Text(proto.displayName).tag(proto)
@@ -154,12 +153,10 @@ private struct ShareRowView: View {
                         .labelsHidden()
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    GridRow {
-                        Text("Server")
+                    fieldRow("Server") {
                         TextField("nas.local or 192.168.1.10", text: $share.config.host)
                     }
-                    GridRow {
-                        Text("Share")
+                    fieldRow("Share") {
                         HStack(spacing: 6) {
                             TextField(share.config.proto.sharePlaceholder,
                                       text: $share.config.shareName)
@@ -168,12 +165,10 @@ private struct ShareRowView: View {
                             }
                         }
                     }
-                    GridRow {
-                        Text("Username")
+                    fieldRow("Username") {
                         TextField(usernamePlaceholder, text: $share.config.username)
                     }
-                    GridRow {
-                        Text("Password")
+                    fieldRow("Password") {
                         SecureField(passwordPlaceholder, text: $share.password)
                     }
                 }
@@ -182,11 +177,23 @@ private struct ShareRowView: View {
                 if let discoveryError {
                     Text(discoveryError)
                         .font(.caption)
-                        .foregroundStyle(.red)
+                        .foregroundColor(.red)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
             .padding(4)
+        }
+    }
+
+    private func fieldRow<Content: View>(
+        _ title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text(title)
+                .frame(width: 72, alignment: .trailing)
+            content()
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -217,7 +224,7 @@ private struct ShareRowView: View {
         VStack(alignment: .leading, spacing: 0) {
             Text("Shares on \(share.config.host)")
                 .font(.caption.bold())
-                .foregroundStyle(.secondary)
+                .foregroundColor(.secondary)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
             Divider()
@@ -230,12 +237,12 @@ private struct ShareRowView: View {
                         } label: {
                             HStack {
                                 Image(systemName: "externaldrive.connected.to.line.below")
-                                    .foregroundStyle(.secondary)
+                                    .foregroundColor(.secondary)
                                 Text(name)
                                 Spacer()
                                 if share.config.shareName == name {
                                     Image(systemName: "checkmark")
-                                        .foregroundStyle(.tint)
+                                        .foregroundColor(.accentColor)
                                 }
                             }
                             .contentShape(Rectangle())

@@ -4,7 +4,7 @@
 
 # NAS Mounter
 
-A tiny macOS menu bar app that keeps your NAS (SMB) shares permanently mounted — so Time Machine backups and anything else relying on network volumes "just work" without manual reconnecting.
+A tiny macOS menu bar app that keeps your NAS (SMB) shares permanently mounted — so Time Machine backups and anything else relying on network volumes "just work" without manual reconnecting. The universal app supports both Intel and Apple silicon Macs running macOS Monterey 12 or newer.
 
 ## What it does
 
@@ -24,7 +24,7 @@ cp -R "build/NAS Mounter.app" /Applications/
 open "/Applications/NAS Mounter.app"
 ```
 
-Requires Xcode command line tools (Swift 5.9+) and macOS 14+.
+Requires Xcode command line tools (Swift 5.9+) to build. The resulting app runs on macOS Monterey 12 or newer.
 
 ## Setup
 
